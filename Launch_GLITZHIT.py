@@ -5,7 +5,8 @@ import re
 import time
 import io
 import shutil
-import math # Import the math module for sine waves
+import math
+import random
 from flask import Flask, request, render_template, Response, jsonify, send_file
 
 # --- Configuration ---
@@ -17,54 +18,84 @@ app = Flask(__name__)
 app.config['TEMP_FOLDER'] = TEMP_FOLDER
 JOBS = {}
 
-# --- NEW: Algorithm to generate byte data ---
-def generate_sine_wave_bytes(path, length_mb=2):
-    """Generates a file with byte data based on sine waves."""
-    num_bytes = length_mb * 1024 * 1024
+# --- Generative Algorithms with Dials ---
+def apply_dials(base_val, i, params):
+    """Applies noise and tremolo to a base 0-255 value."""
+    noise_amount = float(params.get('noiseAmount', 0.0))
+    tremolo_amount = float(params.get('tremoloAmount', 0.0))
+    # A slow LFO for tremolo
+    tremolo_wave = (math.sin(i * 0.001) + 1) / 2
+    amplitude_mod = 1.0 - (tremolo_amount * tremolo_wave)
+    modulated_val = base_val * amplitude_mod
+    # Bipolar noise
+    noise = (random.random() - 0.5) * 2 * noise_amount * 127.5
+    final_val = modulated_val + noise
+    # Clamp to 0-255
+    return max(0, min(255, int(final_val)))
+
+def generate_sine_wave_bytes(path, num_bytes, params):
+    freq_mult = float(params.get('frequencyMultiplier', 1.0))
+    freq_base = 0.01 * freq_mult
     with open(path, 'wb') as f:
         for i in range(num_bytes):
-            # Create slightly different frequencies for R, G, B channels for color effects
-            r = int((math.sin(i * 0.01) + 1) * 127.5)
-            g = int((math.sin(i * 0.013) + 1) * 127.5)
-            b = int((math.sin(i * 0.017) + 1) * 127.5)
-            # We only write one byte, cycling through R, G, B to create the pattern
-            # This is a simple way to interleave the channels.
-            if i % 3 == 0:
-                f.write(bytes([r]))
-            elif i % 3 == 1:
-                f.write(bytes([g]))
-            else:
-                f.write(bytes([b]))
-    return num_bytes
+            val = (math.sin(i * freq_base) + 1) * 127.5
+            f.write(bytes([apply_dials(val, i, params)]))
 
-# --- Shared Job Creation Logic ---
+def generate_square_wave_bytes(path, num_bytes, params):
+    freq_mult = float(params.get('frequencyMultiplier', 1.0))
+    freq_base = 0.01 * freq_mult
+    with open(path, 'wb') as f:
+        for i in range(num_bytes):
+            val = 255 if math.sin(i * freq_base) > 0 else 0
+            f.write(bytes([apply_dials(val, i, params)]))
+
+def generate_triangle_wave_bytes(path, num_bytes, params):
+    freq_mult = float(params.get('frequencyMultiplier', 1.0))
+    freq_base = 0.05 * freq_mult
+    with open(path, 'wb') as f:
+        for i in range(num_bytes):
+            val = (math.asin(math.sin(i * freq_base)) / (math.pi / 2) + 1) * 127.5
+            f.write(bytes([apply_dials(val, i, params)]))
+
+def generate_sawtooth_wave_bytes(path, num_bytes, params):
+    freq_mult = float(params.get('frequencyMultiplier', 1.0))
+    with open(path, 'wb') as f:
+        for i in range(num_bytes):
+            val = (i * freq_mult * 5) % 255
+            f.write(bytes([apply_dials(val, i, params)]))
+
+def generate_random_bytes(path, num_bytes, params):
+    with open(path, 'wb') as f: f.write(os.urandom(num_bytes))
+
+# --- Job Management & Other Routes ---
 def create_job(input_path, form_data):
     job_id = str(uuid.uuid4())
     output_path = os.path.join(app.config['TEMP_FOLDER'], f"{job_id}_output.mp4")
+    res_preset = form_data.get('outputResolutionPreset')
+    custom_res = form_data.get('outputResolutionCustom', '512')
+    if res_preset == 'desktop': scale_filter = 'scale=1920:1080:flags=neighbor'
+    elif res_preset == 'phone': scale_filter = 'scale=1080:1920:flags=neighbor'
+    elif res_preset == 'square': scale_filter = 'scale=1080:1080:flags=neighbor'
+    else: scale_filter = f'scale={custom_res}:{custom_res}:flags=neighbor'
     JOBS[job_id] = {
         "input_path": input_path, "output_path": output_path,
         "params": {
-            "pixel_format": form_data.get('pixelFormat'),
-            "input_width": int(form_data.get('inputWidth')),
-            "input_height": int(form_data.get('inputHeight')),
-            "framerate": float(form_data.get('framerate')),
-            "output_res": int(form_data.get('outputResolution')),
-        },
-        "process": None
+            "pixel_format": form_data.get('pixelFormat'), "input_width": int(form_data.get('inputWidth')),
+            "input_height": int(form_data.get('inputHeight')), "framerate": float(form_data.get('framerate')),
+            "scale_filter": scale_filter,
+        }, "process": None
     }
     return job_id
 
 def cleanup_job(job_id):
     job = JOBS.get(job_id)
     if not job: return
-    print(f"CLEANUP: Removing files for job {job_id}")
     if os.path.exists(job['input_path']): os.remove(job['input_path'])
     if os.path.exists(job['output_path']): os.remove(job['output_path'])
     if job_id in JOBS: del JOBS[job_id]
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def index(): return render_template('index.html')
 
 @app.route('/start-conversion-file', methods=['POST'])
 def start_conversion_file():
@@ -75,25 +106,27 @@ def start_conversion_file():
     job_id = create_job(input_path, request.form)
     return jsonify({"job_id": job_id})
 
-# --- NEW Endpoint for Generative Mode ---
 @app.route('/start-conversion-generative', methods=['POST'])
 def start_conversion_generative():
     for job_id in list(JOBS.keys()): cleanup_job(job_id)
     form_data = request.json
+    duration = float(form_data.get('duration', 5))
+    framerate = float(form_data.get('framerate'))
+    input_width = int(form_data.get('inputWidth'))
+    input_height = int(form_data.get('inputHeight'))
+    bytes_per_pixel = 3
+    total_bytes = int(duration * framerate * input_width * input_height * bytes_per_pixel)
     algorithm = form_data.get('algorithm')
     input_path = os.path.join(app.config['TEMP_FOLDER'], f"{uuid.uuid4()}_input.dat")
-
-    if algorithm == 'sine_wave':
-        generate_sine_wave_bytes(input_path)
-    else:
-        # Placeholder for future algorithms (random, perlin noise, etc.)
-        # For now, just generate a random file.
-        with open(input_path, 'wb') as f:
-            f.write(os.urandom(2 * 1024 * 1024)) # 2MB of random data
-
+    algo_map = {
+        'sine_wave': generate_sine_wave_bytes, 'square_wave': generate_square_wave_bytes,
+        'triangle_wave': generate_triangle_wave_bytes, 'sawtooth_wave': generate_sawtooth_wave_bytes,
+        'random': generate_random_bytes
+    }
+    generator_func = algo_map.get(algorithm, generate_random_bytes)
+    generator_func(input_path, total_bytes, form_data)
     job_id = create_job(input_path, form_data)
     return jsonify({"job_id": job_id})
-
 
 @app.route('/get-video/<job_id>')
 def get_video(job_id):
@@ -125,8 +158,7 @@ def cancel_job():
         try:
             job['process'].terminate()
             return jsonify({"status": "success"})
-        except Exception as e:
-            return jsonify({"status": "error", "message": str(e)}), 500
+        except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
     return jsonify({"status": "error", "message": "Job not found."}), 404
 
 @app.route('/stream-progress')
@@ -142,7 +174,7 @@ def stream_progress():
             frame_size_bytes = params['input_width'] * params['input_height'] * bytes_per_pixel
             file_size_bytes = os.path.getsize(input_path)
             total_frames = int(file_size_bytes / frame_size_bytes) if frame_size_bytes > 0 else 0
-            command = [ 'ffmpeg', '-f', 'rawvideo', '-pix_fmt', params['pixel_format'], '-s', f"{params['input_width']}x{params['input_height']}", '-r', str(params['framerate']), '-i', input_path, '-f', 'u8', '-ar', '44100', '-ac', '1', '-i', input_path, '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p', '-vf', f"scale={params['output_res']}:{params['output_res']}:flags=neighbor", '-shortest', '-y', output_path, '-progress', 'pipe:2' ]
+            command = [ 'ffmpeg', '-f', 'rawvideo', '-pix_fmt', params['pixel_format'], '-s', f"{params['input_width']}x{params['input_height']}", '-r', str(params['framerate']), '-i', input_path, '-f', 'u8', '-ar', '44100', '-ac', '1', '-i', input_path, '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p', '-vf', params['scale_filter'], '-shortest', '-y', output_path, '-progress', 'pipe:2' ]
             process = subprocess.Popen(command, stderr=subprocess.PIPE, universal_newlines=True, text=True)
             JOBS[job_id]['process'] = process
             frame_regex = re.compile(r"frame=\s*(\d+)")

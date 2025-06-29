@@ -9,15 +9,15 @@
         body { font-family: var(--font-family); line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 2rem; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 100% 3px; }
         .main-layout { display: grid; grid-template-columns: 1fr; gap: 2rem; max-width: 1400px; margin: auto; }
         .panel { background-color: var(--panel-bg); padding: 1.5rem; border: 1px solid var(--border-color); }
-        @media (min-width: 992px) { .main-layout { grid-template-columns: 450px 1fr; } #output-panel { display: flex; flex-direction: column; justify-content: flex-start; min-height: 70vh; } }
-        h1, h3 { color: #fff; font-weight: 600; margin-top: 0; }
-        h1 { font-size: 1.8rem; margin-bottom: 1rem; }
-        h3 { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+        @media (min-width: 992px) { body { padding-top: 6rem; } .main-layout { grid-template-columns: 450px 1fr; } #output-panel { display: flex; flex-direction: column; justify-content: flex-start; min-height: 70vh; } }
+        h1, h2, h3 { color: #fff; font-weight: 600; margin-top: 0; }
+        h2 { font-size: 1.5rem; margin-bottom: 1.2rem; }
+        h3 { margin-bottom: 1.2rem; padding-bottom: 0.5rem; }
         hr { border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0; }
         p { margin-top: 0; margin-bottom: 1rem; }
         .form-group { margin-bottom: 1.2rem; }
         label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
-        input[type="file"], select { width: 100%; padding: 0.6rem; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 0; box-sizing: border-box; font-family: var(--font-family); }
+        input[type="file"], input[type="number"], select { width: 100%; padding: 0.6rem; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 0; box-sizing: border-box; font-family: var(--font-family); }
         input[type="file"]::file-selector-button { background-color: var(--secondary-accent); color: #000; border: none; padding: 0.4rem 0.8rem; border-radius: 0; cursor: pointer; margin-right: 1rem; font-weight: 600; }
         input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: var(--border-color); height: 2px; cursor: pointer; }
         input[type="range"]::-webkit-slider-thumb, input[type="range"]::-moz-range-thumb { background-color: var(--primary-accent); height: 14px; width: 14px; border-radius: 0; border: none; }
@@ -39,17 +39,36 @@
         .result .actions { margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
         .result .actions a { color: var(--secondary-accent); border-color: var(--secondary-accent); text-decoration: none; }
         .result .actions a:hover { text-decoration: none; background-color: var(--secondary-accent); color: #000; }
-        .metadata-box { font-size: 0.8rem; color: var(--text-muted); border: 1px solid var(--border-color); padding: 0.5rem 1rem; background-color: var(--bg-color); }
+        .metadata-box { font-size: 0.8rem; color: var(--text-muted); border: 1px solid var(--border-color); padding: 0.5rem 1rem; background-color: var(--bg-color); text-align: left; }
         .metadata-box p { margin: 0; line-height: 1.3; }
         .download-buttons { display: flex; gap: 1rem; }
         .progress-divider { background-color: var(--border-color); height: 2px; margin-top: 0.5rem; }
         #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-accent), var(--secondary-accent)); transition: width 0.2s ease-out; }
+        .logo-link { font-size: 1.8rem; font-weight: 700; color: #fff; text-decoration: none; position: relative; display: block; margin-bottom: 2rem; }
+        @media (min-width: 992px) { .logo-link { position: fixed; top: 1.5rem; left: 2rem; z-index: 100; margin-bottom: 0; } }
+        .logo-link:hover { animation: noise .2s linear infinite; }
+        .logo-link::before, .logo-link::after { content: attr(data-text); position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: var(--bg-color); overflow: hidden; opacity: 0; }
+        .logo-link:hover::before { left: 2px; text-shadow: -2px 0 var(--primary-accent); animation: noise-anim .4s linear infinite alternate-reverse; opacity: 1; }
+        .logo-link:hover::after { left: -2px; text-shadow: 2px 0 var(--secondary-accent); animation: noise-anim-2 .4s linear infinite alternate-reverse; opacity: 1; }
+        .info-button { position: fixed; bottom: 1.5rem; right: 2rem; z-index: 100; color: var(--text-muted); text-decoration: none; font-size: 1.2rem; border: 1px solid var(--text-muted); padding: 0.5rem 1rem; transition: all 0.2s ease; }
+        .info-button:hover { color: var(--secondary-accent); border-color: var(--secondary-accent); }
+        .lightbox-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 998; display: none; }
+        .lightbox-overlay.visible { display: flex; justify-content: center; align-items: center; }
+        .lightbox-content { position: relative; background: var(--panel-bg); padding: 2rem; border: 1px solid var(--border-color); max-width: 600px; }
+        .lightbox-content .close-btn { position: absolute; top: -20px; right: -20px; width: 40px; height: 40px; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; transition: all 0.2s ease; }
+        .lightbox-content .close-btn:hover { color: var(--primary-accent); border-color: var(--primary-accent); transform: rotate(90deg); }
+        #oscilloscope-canvas { background: var(--bg-color); border: 1px solid var(--border-color); width: 100%; }
+        @keyframes noise { 0%,100% { transform: translate(0); } 20% { transform: translate(-1px, 1px); } 40% { transform: translate(1px, -1px); } 60% { transform: translate(-1px, -1px); } 80% { transform: translate(1px, 1px); } }
+        @keyframes noise-anim { 0% { clip-path: inset(10% 0 80% 0); } 20% { clip-path: inset(50% 0 10% 0); } 40% { clip-path: inset(20% 0 40% 0); } 60% { clip-path: inset(80% 0 5% 0); } 80% { clip-path: inset(30% 0 30% 0); } 100% { clip-path: inset(60% 0 20% 0); } }
+        @keyframes noise-anim-2 { 0% { clip-path: inset(80% 0 5% 0); } 20% { clip-path: inset(10% 0 50% 0); } 40% { clip-path: inset(40% 0 20% 0); } 60% { clip-path: inset(5% 0 80% 0); } 80% { clip-path: inset(70% 0 10% 0); } 100% { clip-path: inset(20% 0 60% 0); } }
     </style>
 </head>
 <body>
+    <a href="/" class="logo-link" data-text="glitzh.it">glitzh.it</a>
+    
     <div class="main-layout">
         <div id="controls-panel" class="panel">
-            <h1>glitzh.it</h1>
+            <h2>/_input</h2>
             <form id="main-form">
                 <h3>1. choose source</h3>
                 <div class="form-group" style="display: flex; gap: 1rem;">
@@ -63,31 +82,74 @@
                 </div>
 
                 <div id="generative-source-controls" style="display: none;">
-                    <div class="form-group"><label for="algorithm">algorithm</label><select name="algorithm" id="algorithm"><option value="sine_wave">Sine Wave</option><option value="random">Random Noise</option></select></div>
+                    <div class="form-group">
+                        <label for="algorithm">algorithm</label>
+                        <select name="algorithm" id="algorithm">
+                            <option value="sine_wave">Sine Wave</option>
+                            <option value="square_wave">Square Wave</option>
+                            <option value="triangle_wave">Triangle Wave</option>
+                            <option value="sawtooth_wave">Sawtooth Wave</option>
+                            <option value="random">Random Noise</option>
+                        </select>
+                    </div>
+                    <div id="wave-params">
+                        <div class="form-group"><label for="frequencyMultiplier">frequency multiplier <span class="value-display" id="frequencyMultiplierVal"></span></label><input type="range" name="frequencyMultiplier" id="frequencyMultiplier" min="0.1" max="50" step="0.1" value="1"></div>
+                        <div class="form-group"><label for="noiseAmount">noise amount <span class="value-display" id="noiseAmountVal"></span></label><input type="range" name="noiseAmount" id="noiseAmount" min="0" max="1" step="0.01" value="0"></div>
+                        <div class="form-group"><label for="tremoloAmount">tremolo amount <span class="value-display" id="tremoloAmountVal"></span></label><input type="range" name="tremoloAmount" id="tremoloAmount" min="0" max="1" step="0.01" value="0"></div>
+                        <div class="form-group"><canvas id="oscilloscope-canvas" width="400" height="100"></canvas></div>
+                    </div>
                 </div>
 
-                <hr><h3>2. set parameters</h3>
-                <div class="form-group"><label for="pixelFormat">color mode</label><select name="pixelFormat" id="pixelFormat"><option value="gray">Grayscale (1 byte/pixel)</option><option value="rgb24" selected>RGB (3 bytes/pixel)</option><option value="rgba">RGBA (4 bytes/pixel)</option></select></div>
-                <div class="form-group"><label for="inputWidth">input width <span class="value-display" id="inputWidthVal"></span></label><input type="range" name="inputWidth" id="inputWidth" min="8" max="256" step="8" value="32"></div>
-                <div class="form-group"><label for="inputHeight">input height <span class="value-display" id="inputHeightVal"></span></label><input type="range" name="inputHeight" id="inputHeight" min="8" max="256" step="8" value="32"></div>
-                <div class="form-group"><label for="framerate">framerate <span class="value-display" id="framerateVal"></span></label><input type="range" name="framerate" id="framerate" min="1" max="60" step="1" value="10"></div>
-                <p class="note">Audio: Unsigned 8-bit Mono @ 44100 Hz</p>
-                <hr><h3>3. set output</h3>
-                <div class="form-group"><label for="outputResolution">output resolution <span class="value-display" id="outputResolutionVal"></span></label><input type="range" name="outputResolution" id="outputResolution" min="64" max="720" step="16" value="256"></div>
+                <hr>
+                
+                <div id="shared-parameters">
+                    <h3>2. set interpretation</h3>
+                    <div class="form-group"><label for="pixelFormat">color mode</label><select name="pixelFormat" id="pixelFormat"><option value="gray">Grayscale</option><option value="rgb24" selected>RGB</option><option value="rgba">RGBA</option></select></div>
+                    <div class="form-group"><label for="inputWidth">input width <span class="value-display" id="inputWidthVal"></span></label><input type="range" class="stepper-slider" name="inputWidth" id="inputWidth"></div>
+                    <div class="form-group"><label for="inputHeight">input height <span class="value-display" id="inputHeightVal"></span></label><input type="range" class="stepper-slider" name="inputHeight" id="inputHeight"></div>
+                    <div class="form-group"><label for="framerate">framerate <span class="value-display" id="framerateVal"></span></label><input type="range" class="stepper-slider" name="framerate" id="framerate"></div>
+                    <p class="note">Audio: Unsigned 8-bit Mono @ 44100 Hz</p>
+                    <hr><h3>3. set output</h3>
+                    <div id="generative-duration-param" style="display: none;">
+                        <div class="form-group"><label for="duration">duration <span class="value-display" id="durationVal"></span></label><input type="range" name="duration" id="duration" min="1" max="60" step="1" value="5"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="outputResolutionPreset">output resolution</label>
+                        <select name="outputResolutionPreset" id="outputResolutionPreset">
+                            <option value="desktop" selected>Desktop (1920x1080)</option>
+                            <option value="phone">Phone (1080x1920)</option>
+                            <option value="square">Square (1080x1080)</option>
+                            <option value="custom">Custom Square</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="custom-resolution-wrapper" style="display: none;">
+                        <label for="outputResolutionCustom">custom size (px)</label>
+                        <input type="number" name="outputResolutionCustom" id="outputResolutionCustom" value="512" step="16" min="64" max="1920">
+                    </div>
+                </div>
                 <button type="submit" id="convert-button">generate</button>
             </form>
         </div>
         <div id="output-panel" class="panel">
-            <h3>/_output</h3>
+            <h2>/_output</h2>
             <div class="progress-divider"><div id="progress-bar"></div></div>
             <div id="output-content-area">
                 <div class="output-placeholder"><p>output will be displayed here.</p></div>
             </div>
         </div>
     </div>
-    <script>
-        function updateValue(elementId, value) { document.getElementById(elementId).textContent = value; }
+    
+    <a href="#" class="info-button" id="info-btn">?_info</a>
+    <div class="lightbox-overlay" id="info-lightbox">
+        <div class="lightbox-content">
+            <button class="close-btn" id="lightbox-close-btn">×</button>
+            <h2>about glitzh.it</h2>
+            <p>This tool reads the raw numerical bytes of any file (or generated algorithm) and interprets them as video and audio data, creating unique "glitch art".</p>
+            <p>It's a local application powered by Python, Flask, and FFmpeg. Your data never leaves your computer.</p>
+        </div>
+    </div>
 
+    <script>
         document.addEventListener('DOMContentLoaded', () => {
             const mainForm = document.getElementById('main-form');
             const outputContentArea = document.getElementById('output-content-area');
@@ -98,56 +160,128 @@
             const sourceModeRadios = document.querySelectorAll('input[name="sourceMode"]');
             const fileControls = document.getElementById('file-source-controls');
             const generativeControls = document.getElementById('generative-source-controls');
-
+            const waveParams = document.getElementById('wave-params');
+            const algorithmSelect = document.getElementById('algorithm');
+            const resPresetSelect = document.getElementById('outputResolutionPreset');
+            const customResWrapper = document.getElementById('custom-resolution-wrapper');
+            const generativeDurationParam = document.getElementById('generative-duration-param');
+            const infoBtn = document.getElementById('info-btn');
+            const infoLightbox = document.getElementById('info-lightbox');
+            const lightboxCloseBtn = document.getElementById('lightbox-close-btn');
+            const oscilloscopeCanvas = document.getElementById('oscilloscope-canvas');
+            const oscilloscopeCtx = oscilloscopeCanvas.getContext('2d');
+            
             let currentJobId = null;
             let eventSource = null;
+
+            const stepValues = {
+                inputWidth: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+                inputHeight: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
+                framerate: [4, 8, 12, 24, 25, 30, 60]
+            };
             
             mainForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                if (convertButton.classList.contains('is-cancelling')) {
-                    cancelProcessing();
-                } else {
-                    const sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
-                    if (sourceMode === 'file' && fileInput.files.length === 0) {
-                        alert("please select a file first."); return;
-                    }
-                    startProcessing(sourceMode);
-                }
+                if (convertButton.classList.contains('is-cancelling')) { cancelProcessing(); return; }
+                const sourceMode = document.querySelector('input[name="sourceMode"]:checked').value;
+                if (sourceMode === 'file' && fileInput.files.length === 0) { alert("please select a file first."); return; }
+                startProcessing(sourceMode);
             });
             
             sourceModeRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
-                    fileControls.style.display = e.target.value === 'file' ? 'block' : 'none';
-                    generativeControls.style.display = e.target.value === 'generative' ? 'block' : 'none';
+                    const isFileMode = e.target.value === 'file';
+                    fileControls.style.display = isFileMode ? 'block' : 'none';
+                    generativeControls.style.display = isFileMode ? 'none' : 'block';
+                    generativeDurationParam.style.display = isFileMode ? 'none' : 'block';
                 });
             });
+
+            algorithmSelect.addEventListener('change', () => {
+                const isWave = ['sine_wave', 'square_wave', 'triangle_wave', 'sawtooth_wave'].includes(algorithmSelect.value);
+                waveParams.style.display = isWave ? 'block' : 'none';
+                drawOscilloscope();
+            });
+            
+            document.querySelectorAll('#wave-params input[type="range"]').forEach(slider => {
+                slider.addEventListener('input', drawOscilloscope);
+            });
+            
+            resPresetSelect.addEventListener('change', () => {
+                customResWrapper.style.display = resPresetSelect.value === 'custom' ? 'block' : 'none';
+            });
+
+            infoBtn.addEventListener('click', (e) => { e.preventDefault(); infoLightbox.classList.add('visible'); });
+            lightboxCloseBtn.addEventListener('click', () => infoLightbox.classList.remove('visible'));
+            infoLightbox.addEventListener('click', (e) => { if (e.target === infoLightbox) { infoLightbox.classList.remove('visible'); }});
 
             function startProcessing(sourceMode) {
                 convertButton.disabled = true;
                 displayProcessingUI("initializing...");
-
                 let fetchUrl, fetchOptions;
+                const jsonData = {};
+                new FormData(mainForm).forEach((value, key) => {
+                    if (stepValues[key]) {
+                        const slider = document.getElementById(key);
+                        jsonData[key] = stepValues[key][slider.value];
+                    } else { jsonData[key] = value; }
+                });
 
                 if (sourceMode === 'file') {
+                    const fileFormData = new FormData();
+                    for (const key in jsonData) { fileFormData.append(key, jsonData[key]); }
+                    fileFormData.append('inputFile', fileInput.files[0]);
                     fetchUrl = '/start-conversion-file';
-                    fetchOptions = { method: 'POST', body: new FormData(mainForm) };
-                } else { // generative
+                    fetchOptions = { method: 'POST', body: fileFormData };
+                } else {
                     fetchUrl = '/start-conversion-generative';
-                    const formData = new FormData(mainForm);
-                    const jsonData = {};
-                    formData.forEach((value, key) => { jsonData[key] = value });
                     fetchOptions = { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(jsonData) };
                 }
 
                 fetch(fetchUrl, fetchOptions)
                     .then(response => response.json())
                     .then(data => {
-                        if (data.job_id) {
-                            currentJobId = data.job_id;
-                            connectToStream(currentJobId);
-                        } else { handleError("failed to start job on server."); }
+                        if (data.job_id) { currentJobId = data.job_id; connectToStream(currentJobId); } 
+                        else { handleError("failed to start job on server."); }
                     })
                     .catch(error => handleError(`could not start conversion: ${error.message}`));
+            }
+            
+            function drawOscilloscope() {
+                const width = oscilloscopeCanvas.width;
+                const height = oscilloscopeCanvas.height;
+                const midHeight = height / 2;
+                const algo = algorithmSelect.value;
+                const freqMult = parseFloat(document.getElementById('frequencyMultiplier').value);
+                const noiseAmount = parseFloat(document.getElementById('noiseAmount').value);
+                const tremoloAmount = parseFloat(document.getElementById('tremoloAmount').value);
+                const freqBase = 0.05 * freqMult;
+                
+                oscilloscopeCtx.clearRect(0, 0, width, height);
+                if (algo === 'random') return;
+                
+                let points = [];
+                for (let i = 0; i < width; i++) {
+                    let baseVal;
+                    switch (algo) {
+                        case 'sine_wave': baseVal = (Math.sin(i * freqBase) + 1) * 127.5; break;
+                        case 'square_wave': baseVal = (Math.sin(i * freqBase) > 0) ? 255 : 0; break;
+                        case 'triangle_wave': baseVal = (Math.asin(Math.sin(i * freqBase)) / (Math.PI / 2) + 1) * 127.5; break;
+                        case 'sawtooth_wave': baseVal = (i * freqMult * 0.5) % 255; break;
+                        default: baseVal = 127.5;
+                    }
+                    const tremoloWave = (Math.sin(i * 0.01) + 1) / 2;
+                    const ampMod = 1.0 - (tremoloAmount * tremoloWave);
+                    const noise = (Math.random() - 0.5) * 2 * noiseAmount * 127.5;
+                    const finalVal = (baseVal * ampMod) + noise;
+                    points.push(height - Math.max(0, Math.min(255, finalVal)) / 255 * height);
+                }
+                oscilloscopeCtx.beginPath();
+                oscilloscopeCtx.strokeStyle = 'var(--secondary-accent)';
+                oscilloscopeCtx.lineWidth = 2;
+                oscilloscopeCtx.moveTo(0, points[0]);
+                for (let i = 1; i < width; i++) { oscilloscopeCtx.lineTo(i, points[i]); }
+                oscilloscopeCtx.stroke();
             }
 
             function connectToStream(job_id) {
@@ -203,9 +337,7 @@
                     const elapsed = Date.now() - startTime;
                     const remaining = Math.max(0, (elapsed / (percent / 100)) - elapsed);
                     statusText = `please wait for ${formatTime(remaining)}, your machine is crunching the bytes...`;
-                } else {
-                    statusText = "estimating time...";
-                }
+                } else { statusText = "estimating time..."; }
                 messageP.textContent = statusText;
             }
 
@@ -227,8 +359,9 @@
                                 <div class="actions">
                                     <div class="metadata-box"><p id="video-size-meta"></p><p id="audio-size-meta"></p></div>
                                     <div class="download-buttons">
-                                        <a href="${audioUrl}" download="glitched_audio.mp3">download audio</a>
-                                        <a href="${videoUrl}" download="${downloadFilename}">download video</a>
+                                        <a href="#" id="save-frame-btn">save frame</a>
+                                        <a href="${audioUrl}" download="glitched_audio.mp3">save audio</a>
+                                        <a href="${videoUrl}" download="${downloadFilename}">save video</a>
                                     </div>
                                 </div>
                             </div>`;
@@ -240,6 +373,26 @@
                     })
                     .catch(error => handleError(`failed to fetch assets: ${error.message}`));
             }
+            
+            outputContentArea.addEventListener('click', function(e) {
+                if(e.target.id === 'save-frame-btn') {
+                    e.preventDefault();
+                    const video = document.getElementById('result-video');
+                    if(!video) return;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function(blob) {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `frame_${Date.now()}.png`;
+                        link.click();
+                        URL.revokeObjectURL(link.href);
+                    }, 'image/png');
+                }
+            });
 
             function handleError(message) {
                 if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
@@ -248,23 +401,43 @@
                 resetUIState();
             }
 
+            function formatBytes(bytes, d=2) { if (bytes === 0) return '0 Bytes'; const k=1024;const i=Math.floor(Math.log(bytes)/Math.log(k));return parseFloat((bytes/Math.pow(k,i)).toFixed(d<0?0:d))+' '+['Bytes','KB','MB','GB','TB'][i];}
             function updateSliderFill(slider) {
                 const percent = (slider.value - slider.min) / (slider.max - slider.min) * 100;
                 slider.style.background = `linear-gradient(to right, var(--primary-accent) ${percent}%, var(--border-color) ${percent}%)`;
             }
-            allSliders.forEach(slider => {
-                slider.addEventListener('input', () => updateSliderFill(slider));
+            function updateSliderUI(slider) {
                 const displayId = slider.id + 'Val';
-                const unit = displayId.includes('rate') ? 'fps' : 'px';
-                updateValue(displayId, slider.value + unit);
+                const displaySpan = document.getElementById(displayId);
+                if (!displaySpan) return;
+                const isStepper = slider.classList.contains('stepper-slider');
+                const value = isStepper ? stepValues[slider.id][slider.value] : slider.value;
+                let unit = '';
+                if (slider.id === 'duration') unit = 's';
+                else if (slider.id === 'framerate') unit = 'fps';
+                else if (slider.id === 'frequencyMultiplier') unit = 'x';
+                else unit = 'px';
+                displaySpan.textContent = value + unit;
+                updateSliderFill(slider);
+            }
+            allSliders.forEach(slider => {
+                if (stepValues[slider.id]) {
+                    slider.min = 0;
+                    slider.max = stepValues[slider.id].length - 1;
+                    slider.step = 1;
+                    slider.value = slider.id === 'framerate' ? 5 : 4;
+                }
+                slider.addEventListener('input', () => updateSliderUI(slider));
+                updateSliderUI(slider);
                 updateSliderFill(slider);
             });
             
             const warningDiv = document.getElementById('large-file-warning');
             const acknowledgeCheckbox = document.getElementById('acknowledge-risk-checkbox');
-            function formatBytes(bytes, d=2) { if (bytes === 0) return '0 Bytes'; const k=1024;const i=Math.floor(Math.log(bytes)/Math.log(k));return parseFloat((bytes/Math.pow(k,i)).toFixed(d<0?0:d))+' '+['Bytes','KB','MB','GB','TB'][i];}
             fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) { warningDiv.style.display = 'none'; convertButton.disabled = false; return; } if (file.size > 100 * 1024 * 1024) { document.getElementById('ram-estimate').textContent = formatBytes(file.size * 2); warningDiv.style.display = 'block'; acknowledgeCheckbox.checked = false; convertButton.disabled = true; } else { warningDiv.style.display = 'none'; convertButton.disabled = false; } });
             acknowledgeCheckbox.addEventListener('change', (e) => { convertButton.disabled = !e.target.checked; });
+
+            drawOscilloscope();
         });
     </script>
 </body>
