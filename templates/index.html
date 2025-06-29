@@ -105,10 +105,11 @@
                 <div id="shared-parameters">
                     <h3>2. set interpretation</h3>
                     <div class="form-group"><label for="pixelFormat">color mode</label><select name="pixelFormat" id="pixelFormat"><option value="gray">Grayscale</option><option value="rgb24" selected>RGB</option><option value="rgba">RGBA</option></select></div>
-                    <div class="form-group"><label for="inputWidth">input width <span class="value-display" id="inputWidthVal"></span></label><input type="range" class="stepper-slider" name="inputWidth" id="inputWidth"></div>
-                    <div class="form-group"><label for="inputHeight">input height <span class="value-display" id="inputHeightVal"></span></label><input type="range" class="stepper-slider" name="inputHeight" id="inputHeight"></div>
+                    <div class="form-group"><label for="inputWidth">row amount <span class="value-display" id="inputWidthVal"></span></label><input type="range" class="stepper-slider" name="inputWidth" id="inputWidth"></div>
+                    <div class="form-group"><label for="inputHeight">column amount <span class="value-display" id="inputHeightVal"></span></label><input type="range" class="stepper-slider" name="inputHeight" id="inputHeight"></div>
                     <div class="form-group"><label for="framerate">framerate <span class="value-display" id="framerateVal"></span></label><input type="range" class="stepper-slider" name="framerate" id="framerate"></div>
-                    <p class="note">Audio: Unsigned 8-bit Mono @ 44100 Hz</p>
+                    <div class="form-group"><label for="audioQuality">audio quality <span class="value-display" id="audioQualityVal"></span></label><input type="range" class="stepper-slider" name="audioQuality" id="audioQuality"></div>
+                    
                     <hr><h3>3. set output</h3>
                     <div id="generative-duration-param" style="display: none;">
                         <div class="form-group"><label for="duration">duration <span class="value-display" id="durationVal"></span></label><input type="range" name="duration" id="duration" min="1" max="60" step="1" value="5"></div>
@@ -177,7 +178,13 @@
             const stepValues = {
                 inputWidth: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
                 inputHeight: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512],
-                framerate: [4, 8, 12, 24, 25, 30, 60]
+                framerate: [4, 8, 12, 24, 25, 30, 60],
+                audioQuality: [
+                    { text: 'lo-fi (8-bit signed, 8kHz)', params: { audio_f: 's8', audio_ar: '8000', audio_ac: '1' } },
+                    { text: 'am radio (8-bit unsigned, 11kHz)', params: { audio_f: 'u8', audio_ar: '11025', audio_ac: '1' } },
+                    { text: 'fm radio (8-bit unsigned, 22kHz)', params: { audio_f: 'u8', audio_ar: '22050', audio_ac: '1' } },
+                    { text: 'cd quality (8-bit unsigned, 44kHz)', params: { audio_f: 'u8', audio_ar: '44100', audio_ac: '1' } },
+                ]
             };
             
             mainForm.addEventListener('submit', (e) => {
@@ -203,7 +210,7 @@
                 drawOscilloscope();
             });
             
-            document.querySelectorAll('#wave-params input[type="range"]').forEach(slider => {
+            document.querySelectorAll('#wave-params input[type="range"], #shared-parameters input[type="range"]').forEach(slider => {
                 slider.addEventListener('input', drawOscilloscope);
             });
             
@@ -223,7 +230,11 @@
                 new FormData(mainForm).forEach((value, key) => {
                     if (stepValues[key]) {
                         const slider = document.getElementById(key);
-                        jsonData[key] = stepValues[key][slider.value];
+                        if (key === 'audioQuality') {
+                            Object.assign(jsonData, stepValues[key][slider.value].params);
+                        } else {
+                            jsonData[key] = stepValues[key][slider.value];
+                        }
                     } else { jsonData[key] = value; }
                 });
 
@@ -237,7 +248,7 @@
                     fetchUrl = '/start-conversion-generative';
                     fetchOptions = { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(jsonData) };
                 }
-
+                
                 fetch(fetchUrl, fetchOptions)
                     .then(response => response.json())
                     .then(data => {
@@ -255,6 +266,8 @@
                 const freqMult = parseFloat(document.getElementById('frequencyMultiplier').value);
                 const noiseAmount = parseFloat(document.getElementById('noiseAmount').value);
                 const tremoloAmount = parseFloat(document.getElementById('tremoloAmount').value);
+                const framerate = stepValues.framerate[document.getElementById('framerate').value];
+                const zoomFactor = framerate / 30.0;
                 const freqBase = 0.05 * freqMult;
                 
                 oscilloscopeCtx.clearRect(0, 0, width, height);
@@ -262,12 +275,13 @@
                 
                 let points = [];
                 for (let i = 0; i < width; i++) {
+                    const effective_i = i * zoomFactor;
                     let baseVal;
                     switch (algo) {
-                        case 'sine_wave': baseVal = (Math.sin(i * freqBase) + 1) * 127.5; break;
-                        case 'square_wave': baseVal = (Math.sin(i * freqBase) > 0) ? 255 : 0; break;
-                        case 'triangle_wave': baseVal = (Math.asin(Math.sin(i * freqBase)) / (Math.PI / 2) + 1) * 127.5; break;
-                        case 'sawtooth_wave': baseVal = (i * freqMult * 0.5) % 255; break;
+                        case 'sine_wave': baseVal = (Math.sin(effective_i * freqBase) + 1) * 127.5; break;
+                        case 'square_wave': baseVal = (Math.sin(effective_i * freqBase) > 0) ? 255 : 0; break;
+                        case 'triangle_wave': baseVal = (Math.asin(Math.sin(effective_i * freqBase)) / (Math.PI / 2) + 1) * 127.5; break;
+                        case 'sawtooth_wave': baseVal = (effective_i * freqMult * 0.5) % 255; break;
                         default: baseVal = 127.5;
                     }
                     const tremoloWave = (Math.sin(i * 0.01) + 1) / 2;
@@ -349,19 +363,19 @@
                 const audioPromise = fetch(`/extract-audio/${job_id}`).then(res => res.ok ? res.blob() : Promise.reject(new Error(`audio fetch failed: ${res.status}`)));
                 Promise.all([videoPromise, audioPromise])
                     .then(([videoBlob, audioBlob]) => {
+                        const uniqueId = Date.now();
                         const videoUrl = URL.createObjectURL(videoBlob);
                         const audioUrl = URL.createObjectURL(audioBlob);
                         const sourceName = document.querySelector('input[name="sourceMode"]:checked').value === 'file' ? (fileInput.files[0]?.name || 'video') : (document.getElementById('algorithm').value);
-                        const downloadFilename = `${sourceName.split('.').slice(0, -1).join('.')}_glitched.mp4`;
                         outputContentArea.innerHTML = `
                             <div class="result">
                                 <video id="result-video" controls autoplay loop src="${videoUrl}"></video>
                                 <div class="actions">
                                     <div class="metadata-box"><p id="video-size-meta"></p><p id="audio-size-meta"></p></div>
                                     <div class="download-buttons">
-                                        <a href="#" id="save-frame-btn">save frame</a>
-                                        <a href="${audioUrl}" download="glitched_audio.mp3">save audio</a>
-                                        <a href="${videoUrl}" download="${downloadFilename}">save video</a>
+                                        <a href="#" id="save-frame-btn" download="glitzh_frame_${uniqueId}.png">save frame</a>
+                                        <a href="${audioUrl}" download="glitzh_audio_${uniqueId}.mp3">save audio</a>
+                                        <a href="${videoUrl}" download="glitzh_video_${uniqueId}.mp4">save video</a>
                                     </div>
                                 </div>
                             </div>`;
@@ -384,13 +398,9 @@
                     canvas.height = video.videoHeight;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    canvas.toBlob(function(blob) {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(blob);
-                        link.download = `frame_${Date.now()}.png`;
-                        link.click();
-                        URL.revokeObjectURL(link.href);
-                    }, 'image/png');
+                    const link = e.target;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
                 }
             });
 
@@ -410,14 +420,14 @@
                 const displayId = slider.id + 'Val';
                 const displaySpan = document.getElementById(displayId);
                 if (!displaySpan) return;
-                const isStepper = slider.classList.contains('stepper-slider');
+                const isStepper = !!stepValues[slider.id];
                 const value = isStepper ? stepValues[slider.id][slider.value] : slider.value;
                 let unit = '';
                 if (slider.id === 'duration') unit = 's';
                 else if (slider.id === 'framerate') unit = 'fps';
-                else if (slider.id === 'frequencyMultiplier') unit = 'x';
-                else unit = 'px';
-                displaySpan.textContent = value + unit;
+                else if (slider.id === 'frequencyMultiplier' || slider.id === 'noiseAmount' || slider.id === 'tremoloAmount') unit = 'x';
+                else unit = '';
+                displaySpan.textContent = isStepper && slider.id === 'audioQuality' ? value.text : value + unit;
                 updateSliderFill(slider);
             }
             allSliders.forEach(slider => {
@@ -425,18 +435,17 @@
                     slider.min = 0;
                     slider.max = stepValues[slider.id].length - 1;
                     slider.step = 1;
-                    slider.value = slider.id === 'framerate' ? 5 : 4;
+                    slider.value = slider.id === 'framerate' ? 5 : (slider.id === 'audioQuality' ? 3 : 4);
                 }
                 slider.addEventListener('input', () => updateSliderUI(slider));
                 updateSliderUI(slider);
-                updateSliderFill(slider);
             });
             
             const warningDiv = document.getElementById('large-file-warning');
             const acknowledgeCheckbox = document.getElementById('acknowledge-risk-checkbox');
             fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) { warningDiv.style.display = 'none'; convertButton.disabled = false; return; } if (file.size > 100 * 1024 * 1024) { document.getElementById('ram-estimate').textContent = formatBytes(file.size * 2); warningDiv.style.display = 'block'; acknowledgeCheckbox.checked = false; convertButton.disabled = true; } else { warningDiv.style.display = 'none'; convertButton.disabled = false; } });
             acknowledgeCheckbox.addEventListener('change', (e) => { convertButton.disabled = !e.target.checked; });
-
+            
             drawOscilloscope();
         });
     </script>

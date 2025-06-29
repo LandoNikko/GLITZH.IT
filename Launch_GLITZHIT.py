@@ -20,38 +20,31 @@ JOBS = {}
 
 # --- Generative Algorithms with Dials ---
 def apply_dials(base_val, i, params):
-    """Applies noise and tremolo to a base 0-255 value."""
     noise_amount = float(params.get('noiseAmount', 0.0))
     tremolo_amount = float(params.get('tremoloAmount', 0.0))
-    # A slow LFO for tremolo
     tremolo_wave = (math.sin(i * 0.001) + 1) / 2
     amplitude_mod = 1.0 - (tremolo_amount * tremolo_wave)
     modulated_val = base_val * amplitude_mod
-    # Bipolar noise
     noise = (random.random() - 0.5) * 2 * noise_amount * 127.5
     final_val = modulated_val + noise
-    # Clamp to 0-255
     return max(0, min(255, int(final_val)))
 
 def generate_sine_wave_bytes(path, num_bytes, params):
-    freq_mult = float(params.get('frequencyMultiplier', 1.0))
-    freq_base = 0.01 * freq_mult
+    freq_mult = float(params.get('frequencyMultiplier', 1.0)); freq_base = 0.01 * freq_mult
     with open(path, 'wb') as f:
         for i in range(num_bytes):
             val = (math.sin(i * freq_base) + 1) * 127.5
             f.write(bytes([apply_dials(val, i, params)]))
 
 def generate_square_wave_bytes(path, num_bytes, params):
-    freq_mult = float(params.get('frequencyMultiplier', 1.0))
-    freq_base = 0.01 * freq_mult
+    freq_mult = float(params.get('frequencyMultiplier', 1.0)); freq_base = 0.01 * freq_mult
     with open(path, 'wb') as f:
         for i in range(num_bytes):
             val = 255 if math.sin(i * freq_base) > 0 else 0
             f.write(bytes([apply_dials(val, i, params)]))
 
 def generate_triangle_wave_bytes(path, num_bytes, params):
-    freq_mult = float(params.get('frequencyMultiplier', 1.0))
-    freq_base = 0.05 * freq_mult
+    freq_mult = float(params.get('frequencyMultiplier', 1.0)); freq_base = 0.05 * freq_mult
     with open(path, 'wb') as f:
         for i in range(num_bytes):
             val = (math.asin(math.sin(i * freq_base)) / (math.pi / 2) + 1) * 127.5
@@ -77,12 +70,17 @@ def create_job(input_path, form_data):
     elif res_preset == 'phone': scale_filter = 'scale=1080:1920:flags=neighbor'
     elif res_preset == 'square': scale_filter = 'scale=1080:1080:flags=neighbor'
     else: scale_filter = f'scale={custom_res}:{custom_res}:flags=neighbor'
+    
     JOBS[job_id] = {
         "input_path": input_path, "output_path": output_path,
         "params": {
             "pixel_format": form_data.get('pixelFormat'), "input_width": int(form_data.get('inputWidth')),
             "input_height": int(form_data.get('inputHeight')), "framerate": float(form_data.get('framerate')),
             "scale_filter": scale_filter,
+            # NEW: Store dynamic audio parameters
+            "audio_f": form_data.get('audio_f', 'u8'),
+            "audio_ar": form_data.get('audio_ar', '44100'),
+            "audio_ac": form_data.get('audio_ac', '1'),
         }, "process": None
     }
     return job_id
@@ -174,7 +172,17 @@ def stream_progress():
             frame_size_bytes = params['input_width'] * params['input_height'] * bytes_per_pixel
             file_size_bytes = os.path.getsize(input_path)
             total_frames = int(file_size_bytes / frame_size_bytes) if frame_size_bytes > 0 else 0
-            command = [ 'ffmpeg', '-f', 'rawvideo', '-pix_fmt', params['pixel_format'], '-s', f"{params['input_width']}x{params['input_height']}", '-r', str(params['framerate']), '-i', input_path, '-f', 'u8', '-ar', '44100', '-ac', '1', '-i', input_path, '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p', '-vf', params['scale_filter'], '-shortest', '-y', output_path, '-progress', 'pipe:2' ]
+            
+            # Use dynamic audio params to build the command
+            command = [
+                'ffmpeg',
+                '-f', 'rawvideo', '-pix_fmt', params['pixel_format'], '-s', f"{params['input_width']}x{params['input_height']}",
+                '-r', str(params['framerate']), '-i', input_path,
+                '-f', params['audio_f'], '-ar', params['audio_ar'], '-ac', params['audio_ac'], '-i', input_path,
+                '-c:v', 'libx264', '-c:a', 'aac', '-pix_fmt', 'yuv420p', '-vf', params['scale_filter'],
+                '-shortest', '-y', output_path, '-progress', 'pipe:2'
+            ]
+            
             process = subprocess.Popen(command, stderr=subprocess.PIPE, universal_newlines=True, text=True)
             JOBS[job_id]['process'] = process
             frame_regex = re.compile(r"frame=\s*(\d+)")
