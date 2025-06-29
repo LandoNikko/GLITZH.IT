@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Raw File to MP4 Converter</title>
+    <style>
+        :root { --bg-color: #0d0d1a; --panel-bg: #1a1a2e; --text-color: #e0e0e0; --text-muted: #8c8ca3; --primary-accent: #f0f; --secondary-accent: #0ff; --border-color: #2e2e4f; --font-family: 'Fira Code', 'Roboto Mono', monospace; }
+        body { font-family: var(--font-family); line-height: 1.6; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 2rem; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 100% 3px; }
+        .main-layout { display: grid; grid-template-columns: 1fr; gap: 2rem; max-width: 1400px; margin: auto; }
+        .panel { background-color: var(--panel-bg); padding: 1.5rem; border: 1px solid var(--border-color); }
+        @media (min-width: 992px) { .main-layout { grid-template-columns: 450px 1fr; } #output-panel { display: flex; flex-direction: column; justify-content: flex-start; min-height: 70vh; } }
+        h1, h3, h4 { color: #fff; font-weight: 600; margin-top: 0; }
+        h1 { font-size: 1.8rem; margin-bottom: 1rem; }
+        h3 { margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+        h4 { margin-bottom: 1.2rem; }
+        hr { border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0; }
+        p { margin-top: 0; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        input[type="file"], select { width: 100%; padding: 0.6rem; background-color: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color); border-radius: 0; box-sizing: border-box; font-family: var(--font-family); }
+        input[type="file"]::file-selector-button { background-color: var(--secondary-accent); color: #000; border: none; padding: 0.4rem 0.8rem; border-radius: 0; cursor: pointer; margin-right: 1rem; font-weight: 600; }
+        input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+        input[type="range"]::-webkit-slider-runnable-track, input[type="range"]::-moz-range-track { background: var(--border-color); height: 2px; }
+        input[type="range"]::-webkit-slider-thumb, input[type="range"]::-moz-range-thumb { background-color: var(--primary-accent); height: 14px; width: 14px; border-radius: 0; border: none; }
+        .value-display { font-weight: 600; color: var(--secondary-accent); }
+        button, .actions a { background-color: transparent; padding: 0.75rem 1rem; border: 1px solid; border-radius: 0; cursor: pointer; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s ease; text-align: center; }
+        button { width: 100%; color: var(--primary-accent); border-color: var(--primary-accent); }
+        button.is-cancelling { color: #ffc107; border-color: #ffc107; }
+        button:hover:not(:disabled) { background-color: var(--primary-accent); color: #000; }
+        button.is-cancelling:hover:not(:disabled) { background-color: #ffc107; color: #000; }
+        button:disabled { background: transparent; border-color: #555; color: #555; cursor: not-allowed; }
+        .note { border-left: 2px solid var(--text-muted); padding-left: 1rem; color: var(--text-muted); font-size: 0.8rem; }
+        #large-file-warning { display: none; padding: 1rem; margin: 1.5rem 0; background-color: #ffc107; color: #1e1e1e; }
+        #large-file-warning strong { color: #000; } #large-file-warning label { color: #1e1e1e; font-weight: 500; }
+        #output-content-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+        .output-placeholder, .processing-placeholder { color: var(--text-muted); }
+        .processing-placeholder { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        .result { width: 100%; display: flex; flex-direction: column; }
+        .result video { width: 100%; height: auto; object-fit: contain; border: 1px solid var(--border-color); background-color: #000; }
+        .result .actions { margin-top: 1rem; display: flex; justify-content: flex-end; }
+        .result .actions a { color: var(--secondary-accent); border-color: var(--secondary-accent); text-decoration: none; }
+        .result .actions a:hover { text-decoration: none; background-color: var(--secondary-accent); color: #000; }
+        /* NEW Smart Divider / Progress Bar */
+        .progress-divider { background-color: var(--border-color); height: 2px; margin-top: 0.5rem; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary-accent), var(--secondary-accent)); transition: width 0.2s ease-out; }
+    </style>
+</head>
+<body>
+    <div class="main-layout">
+        <div id="controls-panel" class="panel">
+            <h1>RAW_GLITCH.MP4</h1>
+            <form id="main-form">
+                <div class="form-group"><label for="inputFile">1. UPLOAD_FILE</label><input type="file" name="inputFile" id="inputFile" required></div>
+                <div id="large-file-warning"><p><strong>// WARNING: LARGE_FILE_DETECTED //</strong></p><p>Operation requires approx. <strong id="ram-estimate"></strong> RAM. System may become unstable.</p><label><input type="checkbox" id="acknowledge-risk-checkbox"> I acknowledge the risk.</label></div>
+                <hr><h4>2. SET_PARAMETERS</h4>
+                <div class="form-group"><label for="pixelFormat">COLOR_MODE</label><select name="pixelFormat" id="pixelFormat"><option value="gray">Grayscale (1 byte/pixel)</option><option value="rgb24" selected>RGB (3 bytes/pixel)</option><option value="rgba">RGBA (4 bytes/pixel)</option></select></div>
+                <div class="form-group"><label for="inputWidth">INPUT_WIDTH <span class="value-display" id="inputWidthVal"></span></label><input type="range" name="inputWidth" id="inputWidth" min="8" max="256" step="8" value="32" oninput="updateValue('inputWidthVal', this.value + 'px')"></div>
+                <div class="form-group"><label for="inputHeight">INPUT_HEIGHT <span class="value-display" id="inputHeightVal"></span></label><input type="range" name="inputHeight" id="inputHeight" min="8" max="256" step="8" value="32" oninput="updateValue('inputHeightVal', this.value + 'px')"></div>
+                <div class="form-group"><label for="framerate">FRAMERATE <span class="value-display" id="framerateVal"></span></label><input type="range" name="framerate" id="framerate" min="1" max="60" step="1" value="10" oninput="updateValue('framerateVal', this.value + 'fps')"></div>
+                <p class="note">Audio: Unsigned 8-bit Mono @ 44100 Hz</p>
+                <hr><h4>3. SET_OUTPUT</h4>
+                <div class="form-group"><label for="outputResolution">OUTPUT_RESOLUTION <span class="value-display" id="outputResolutionVal"></span></label><input type="range" name="outputResolution" id="outputResolution" min="64" max="720" step="16" value="256" oninput="updateValue('outputResolutionVal', this.value + 'px')"></div>
+                <button type="submit" id="convert-button">G E N E R A T E</button>
+            </form>
+        </div>
+        <div id="output-panel" class="panel">
+            <h3>/_Output</h3>
+            <div class="progress-divider"><div id="progress-bar"></div></div>
+            <div id="output-content-area">
+                <div class="output-placeholder"><p>Output will be displayed here.</p></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function updateValue(elementId, value) { document.getElementById(elementId).textContent = value; }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainForm = document.getElementById('main-form');
+            const outputContentArea = document.getElementById('output-content-area');
+            const fileInput = document.getElementById('inputFile');
+            const convertButton = document.getElementById('convert-button');
+            const progressBar = document.getElementById('progress-bar');
+
+            let currentJobId = null;
+            let eventSource = null;
+            let dotInterval = null;
+
+            mainForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (fileInput.files.length === 0) { alert("Please select a file first."); return; }
+                startProcessing();
+            });
+            
+            convertButton.addEventListener('click', (e) => {
+                if(e.target.classList.contains('is-cancelling')) {
+                    cancelProcessing();
+                }
+            });
+
+            function startProcessing() {
+                convertButton.disabled = true;
+                displayProcessingUI();
+                const formData = new FormData(mainForm);
+                fetch('/start-conversion', { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.job_id) {
+                            currentJobId = data.job_id;
+                            connectToStream(currentJobId);
+                        } else {
+                            handleError("Failed to start job on server.");
+                        }
+                    })
+                    .catch(error => handleError(`Could not start conversion: ${error.message}`));
+            }
+
+            function connectToStream(job_id) {
+                convertButton.disabled = false;
+                convertButton.textContent = "C A N C E L";
+                convertButton.classList.add('is-cancelling');
+                
+                eventSource = new EventSource(`/stream-progress?job_id=${job_id}`);
+                const startTime = Date.now();
+                
+                eventSource.onmessage = event => {
+                    const percent = parseInt(event.data, 10);
+                    progressBar.style.width = percent + '%';
+                    updateETR(startTime, percent);
+                };
+                
+                eventSource.addEventListener('success', event => handleSuccess(event.data));
+                eventSource.addEventListener('error', event => handleError(event.data || "An unknown error occurred."));
+            }
+
+            function cancelProcessing() {
+                if (!currentJobId) return;
+                fetch('/cancel-job', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ job_id: currentJobId })
+                });
+                // The 'error' event from the stream will handle the UI reset
+            }
+
+            function resetUIState() {
+                if(eventSource) eventSource.close();
+                if(dotInterval) clearInterval(dotInterval);
+                convertButton.disabled = false;
+                convertButton.textContent = "G E N E R A T E";
+                convertButton.classList.remove('is-cancelling');
+                progressBar.style.width = '0%';
+                currentJobId = null;
+                eventSource = null;
+            }
+
+            function displayProcessingUI() {
+                outputContentArea.innerHTML = `
+                    <div class="processing-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"><rect width="10" height="10" x="1" y="1" fill="currentColor" rx="1"><animate id="a" fill="freeze" attributeName="x" begin="0;d.end" dur="0.2s" values="1;13"/><animate id="b" fill="freeze" attributeName="y" begin="c.end" dur="0.2s" values="1;13"/><animate id="c" fill="freeze" attributeName="x" begin="b.end" dur="0.2s" values="13;1"/><animate id="d" fill="freeze" attributeName="y" begin="a.end" dur="0.2s" values="13;1"/></rect><rect width="10" height="10" x="1" y="13" fill="currentColor" rx="1"><animate id="c" fill="freeze" attributeName="y" begin="a.end" dur="0.2s" values="13;1"/><animate id="d" fill="freeze" attributeName="x" begin="b.end" dur="0.2s" values="1;13"/><animate id="a" fill="freeze" attributeName="y" begin="c.end" dur="0.2s" values="1;13"/><animate id="b" fill="freeze" attributeName="x" begin="d.end" dur="0.2s" values="13;1"/></rect></svg>
+                        <p id="processing-message">Please wait, your machine is crunching the bytes<span id="dots"></span></p>
+                    </div>`;
+                const dotsSpan = document.getElementById('dots');
+                dotInterval = setInterval(() => { dotsSpan.textContent = '.'.repeat((dotsSpan.textContent.length + 1) % 4); }, 400);
+            }
+
+            function updateETR(startTime, percent) {
+                const messageP = document.getElementById('processing-message');
+                if (!messageP) return;
+
+                let etrText = "Estimating...";
+                if (percent > 3) {
+                    const elapsedTime = Date.now() - startTime;
+                    const totalTime = elapsedTime / (percent / 100);
+                    const remainingTime = Math.max(0, totalTime - elapsedTime);
+                    etrText = formatTime(remainingTime) + " remaining";
+                }
+                messageP.innerHTML = `Please wait for ${etrText}, your machine is crunching the bytes<span id="dots">.</span>`;
+            }
+
+            function formatTime(ms) {
+                const totalSeconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+
+            function handleSuccess(filename) {
+                outputContentArea.innerHTML = `
+                    <div class="result">
+                        <video controls autoplay loop><source src="/static/output/${filename}" type="video/mp4"></video>
+                        <div class="actions"><a href="/static/output/${filename}" download>DOWNLOAD_VIDEO</a></div>
+                    </div>`;
+                resetUIState();
+                mainForm.reset();
+            }
+
+            function handleError(message) {
+                outputContentArea.innerHTML = `<div class="output-placeholder"><p style="color:#ff4d4d;"><strong>// ERROR //</strong><br>${message}</p></div>`;
+                resetUIState();
+            }
+            
+            // --- Large file warning logic ---
+            const warningDiv = document.getElementById('large-file-warning');
+            const acknowledgeCheckbox = document.getElementById('acknowledge-risk-checkbox');
+            fileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) { warningDiv.style.display = 'none'; convertButton.disabled = false; return; } if (file.size > 100 * 1024 * 1024) { document.getElementById('ram-estimate').textContent = formatBytes(file.size * 2); warningDiv.style.display = 'block'; acknowledgeCheckbox.checked = false; convertButton.disabled = true; } else { warningDiv.style.display = 'none'; convertButton.disabled = false; } });
+            acknowledgeCheckbox.addEventListener('change', (e) => { convertButton.disabled = !e.target.checked; });
+            
+            // --- Set initial slider values ---
+            document.querySelectorAll('input[type="range"]').forEach(slider => { const displayId = slider.id + 'Val'; const unit = displayId.includes('rate') ? 'fps' : 'px'; updateValue(displayId, slider.value + unit); });
+        });
+    </script>
+</body>
+</html>

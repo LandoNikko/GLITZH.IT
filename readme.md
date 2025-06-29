@@ -1,0 +1,1 @@
+A local audiovisual glitch synthesizer web app. It interprets the raw data from any file (bytes 0-255) or constructs its own data with algorithms to produce unique glitch video and audio.
